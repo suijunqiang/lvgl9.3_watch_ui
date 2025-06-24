@@ -23,7 +23,8 @@
 #include "lvgl/examples/lv_examples.h"
 #include "lvgl/demos/lv_demos.h"
 
-#include "demo/view_manager.h"
+#include "demo/manager_view.h"
+//#include "demo/view_manager.h"
 #include "demo/view_watefall.h"
 
 
@@ -99,8 +100,9 @@ int SDL_main(int argc, char **argv)
   //lv_demo_music();
   //lv_demos_show_help();
   //lv_demo_stress();
-  //lv_example_view_manager();
-  lv_demo_waterfall();
+  lv_example_view_manager();
+  //view_manager_init();
+  //lv_demo_waterfall();
 
   while(1) {
     /* Periodically call the lv_task handler.
