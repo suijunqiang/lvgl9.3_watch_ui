@@ -1,4 +1,8 @@
 
+![image](main/src/demo/img/waterfall.png)
+![image](main/src/demo/img/win_main.png)
+![image](main/src/demo/img/win_settings.png)
+![image](main/src/demo/img/win_music.png)
 ![image](main/src/demo/lvgl_waterfallf.gif)
 # VSCode Simulator project for LVGL
 
