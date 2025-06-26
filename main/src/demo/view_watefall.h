@@ -105,32 +105,10 @@ static void img_event_cb(lv_event_t * e) {
     
     if(code == LV_EVENT_CLICKED) {
         printf("图像被点击！\n");
-        
-        // 创建一个临时消息弹窗
-        lv_obj_t * msg = lv_label_create(lv_scr_act());
-        lv_label_set_text(msg, "Icon Clicked!");
-        
-        // 设置样式（可选）
-        static lv_style_t style;
-        lv_style_init(&style);
-        lv_style_set_bg_color(&style, lv_color_hex(0x000000));
-        lv_style_set_text_color(&style, lv_color_hex(0xFFFFFF));
-        lv_style_set_pad_all(&style, 10);
-        lv_obj_add_style(msg, &style, 0);
-        
-        // 居中显示
-        lv_obj_center(msg);
-        
-        // 确保对象是可见的
-        lv_obj_clear_flag(msg, LV_OBJ_FLAG_HIDDEN);
-        
-        // 3秒后自动删除消息
-        lv_anim_t a;
-        lv_anim_init(&a);
-        lv_anim_set_time(&a, 3000);
-        lv_anim_set_ready_cb(&a, anim_ready_cb);
-        lv_anim_set_var(&a, msg);
-        lv_anim_start(&a);
+        lv_obj_t * mbox1 = lv_msgbox_create(NULL);
+        lv_msgbox_add_title(mbox1, "Hello");
+        lv_msgbox_add_text(mbox1, "icon btn click.");
+        lv_msgbox_add_close_button(mbox1); 
     }
 }
 

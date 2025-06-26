@@ -7,78 +7,81 @@
 #define VIEW_MANAGER_SCH 320
 /* View ID */
 typedef enum {
-    VIEW_MAIN,
-    VIEW_SETTINGS,
-    VIEW_MUSIC,
-    VIEW_GALLERY,
-    VIEW_COUNT
-} view_id_t;
+    VIEW_MAIN_E,
+    VIEW_SETTINGS_E,
+    VIEW_MUSIC_E,
+    VIEW_GALLERY_E,
+    VIEW_COUNT_E
+} view_id_enum;
 
 /* View callback function types */
 typedef void (*view_create_cb_t)(lv_obj_t * parent);
 typedef void (*view_destroy_cb_t)(void);
 
 /* Current active view */
-static view_id_t current_view = VIEW_MAIN;
+static view_id_enum top_view = VIEW_MAIN_E;
 /* Main view object */
-static lv_obj_t * main_view   = NULL;
+static lv_obj_t * main_view_bk   = NULL;
 
 /* View manager initialization */
-void view_manager_init(void);
+void manager_init(void);
 
 /* View creation functions */
-static void create_main_view(lv_obj_t * parent);
-static void create_settings_view(lv_obj_t * parent);
-static void create_music_view(lv_obj_t * parent);
-static void create_gallery_view(lv_obj_t * parent);
+static void create_main(lv_obj_t * parent);
+static void create_settings(lv_obj_t * parent);
+static void create_music(lv_obj_t * parent);
+static void create_gallery(lv_obj_t * parent);
 
 /* View destruction functions */
-static void destroy_main_view(void);
-static void destroy_settings_view(void);
-static void destroy_music_view(void);
-static void destroy_gallery_view(void);
+static void destroy_main(void);
+static void destroy_settings(void);
+static void destroy_music(void);
+static void destroy_gallery(void);
 
 /* View switching functions */
-static void switch_to_view(view_id_t view_id);
-static void return_to_main_view(lv_event_t * e);
+static void switch_to(view_id_enum view_id);
+static void return_to_main(lv_event_t * e);
 
 /* Icon click event handler */
-static void icon_click_event_handler(lv_event_t * e);
+static void img_click_event_handler(lv_event_t * e);
+
+/* Swipe event handler */
+static void swipe_event_handler(lv_event_t * e);
 
 /* View registration table */
 static struct {
     view_create_cb_t create_cb;
     view_destroy_cb_t destroy_cb;
     lv_obj_t * obj;
-} views[VIEW_COUNT] = {
-    [VIEW_MAIN]     = {create_main_view, destroy_main_view, NULL},
-    [VIEW_SETTINGS] = {create_settings_view, destroy_settings_view, NULL},
-    [VIEW_MUSIC]    = {create_music_view, destroy_music_view, NULL},
-    [VIEW_GALLERY]  = {create_gallery_view, destroy_gallery_view, NULL}
+} views[VIEW_COUNT_E] = {
+    [VIEW_MAIN_E]     = {create_main, destroy_main, NULL},
+    [VIEW_SETTINGS_E] = {create_settings, destroy_settings, NULL},
+    [VIEW_MUSIC_E]    = {create_music, destroy_music, NULL},
+    [VIEW_GALLERY_E]  = {create_gallery, destroy_gallery, NULL}
 };
 
 /* Example function */
 void lv_example_view_manager(void) {
-    view_manager_init();
+    manager_init();
 }
 
 /* View manager initialization */
-void view_manager_init(void) {
+void manager_init(void) {
     /* Switch to the main view */
-    switch_to_view(VIEW_MAIN);
+    switch_to(VIEW_MAIN_E);
 }
 
 /* Switch to the specified view */
-static void switch_to_view(view_id_t view_id) {
+static void switch_to(view_id_enum view_id) {
     printf("switch_to_view \n");
     /* Destroy the current view if it's not the main view */
-    if(current_view != VIEW_MAIN && views[current_view].destroy_cb) {
-        printf("in current_view if\n");
-        views[current_view].destroy_cb();
+    if(top_view != VIEW_MAIN_E && views[top_view].destroy_cb) {
+        printf("in top_view if\n");
+        views[top_view].destroy_cb();
     }
 
     /* Update the current view ID */
-    current_view = view_id;
+    top_view = view_id;
 
     /* Create the target view if it doesn't exist */
     if(!views[view_id].obj && views[view_id].create_cb) {
@@ -98,38 +101,47 @@ static void switch_to_view(view_id_t view_id) {
 }
 
 /* Callback function to return to the main view */
-static void return_to_main_view(lv_event_t * e) {
-    switch_to_view(VIEW_MAIN);
+static void return_to_main(lv_event_t * e) {
+    switch_to(VIEW_MAIN_E);
 }
 
 /* Icon click event handler */
-static void icon_click_event_handler(lv_event_t * e) {
-    printf("icon_click_event_handler\n");
-    view_id_t view_id = (view_id_t)lv_event_get_user_data(e);
-    switch_to_view(view_id);
+static void img_click_event_handler(lv_event_t * e) {
+    printf("img_click_event_handler\n");
+    view_id_enum view_id = (view_id_enum)lv_event_get_user_data(e);
+    switch_to(view_id);
+}
+
+/* Swipe event handler */
+static void swipe_event_handler(lv_event_t * e) {
+    lv_dir_t dir = lv_indev_get_gesture_dir(lv_indev_get_act());
+    if (dir == LV_DIR_RIGHT && top_view != VIEW_MAIN_E) {
+        printf("Swipe right return to main view\n");
+        return_to_main(e);
+    }
 }
 
 /* Create the main view */
-static void create_main_view(lv_obj_t * parent) {
+static void create_main(lv_obj_t * parent) {
     /* Create the main view object */
-    main_view = lv_obj_create(parent);
-    lv_obj_set_size(main_view, LV_PCT(100), LV_PCT(100));
-    lv_obj_clear_flag(main_view, LV_OBJ_FLAG_SCROLLABLE);
+    main_view_bk = lv_obj_create(parent);
+    lv_obj_set_size(main_view_bk, LV_PCT(100), LV_PCT(100));
+    lv_obj_clear_flag(main_view_bk, LV_OBJ_FLAG_SCROLLABLE);
 
     /* Set the main view style */
     static lv_style_t style_main;
     lv_style_init(&style_main);
     lv_style_set_bg_color(&style_main, lv_color_hex(0xFFFFFF));
-    lv_obj_add_style(main_view, &style_main, 0);
+    lv_obj_add_style(main_view_bk, &style_main, 0);
 
     /* Create the title */
-    lv_obj_t * title = lv_label_create(main_view);
+    lv_obj_t * title = lv_label_create(main_view_bk);
     lv_label_set_text(title, "Main Menu");
     lv_obj_set_style_text_font(title, &lv_font_montserrat_24, 0);
     lv_obj_align(title, LV_ALIGN_TOP_MID, 0, 0);
 
     /* Create the icon grid */
-    lv_obj_t * icon_grid = lv_obj_create(main_view);
+    lv_obj_t * icon_grid = lv_obj_create(main_view_bk);
     lv_obj_set_size(icon_grid, LV_PCT(100), LV_PCT(100));
     lv_obj_align(icon_grid, LV_ALIGN_CENTER, 0, 0);
     lv_obj_clear_flag(icon_grid, LV_OBJ_FLAG_SCROLLABLE);
@@ -152,10 +164,10 @@ static void create_main_view(lv_obj_t * parent) {
         "Gallery"
     };
 
-    view_id_t view_ids[] = {
-        VIEW_SETTINGS,
-        VIEW_MUSIC,
-        VIEW_GALLERY
+    view_id_enum view_ids[] = {
+        VIEW_SETTINGS_E,
+        VIEW_MUSIC_E,
+        VIEW_GALLERY_E
     };
 
     /* Create icon buttons */
@@ -192,24 +204,24 @@ static void create_main_view(lv_obj_t * parent) {
         lv_obj_set_style_text_font(label, &lv_font_montserrat_16, 0);
 
         /* Add the click event */
-        lv_obj_add_event_cb(btn, icon_click_event_handler, LV_EVENT_CLICKED, (void*)view_ids[i]);
+        lv_obj_add_event_cb(btn, img_click_event_handler, LV_EVENT_CLICKED, (void*)view_ids[i]);
     }
 
-    views[VIEW_MAIN].obj = main_view;
+    views[VIEW_MAIN_E].obj = main_view_bk;
 }
 
 /* Destroy the main view */
-static void destroy_main_view(void) {
-    if(main_view) {
-        lv_obj_add_flag(main_view, LV_OBJ_FLAG_HIDDEN);
-        main_view = NULL;
-        views[VIEW_MAIN].obj = NULL;
+static void destroy_main(void) {
+    if(main_view_bk) {
+        lv_obj_add_flag(main_view_bk, LV_OBJ_FLAG_HIDDEN);
+        main_view_bk = NULL;
+        views[VIEW_MAIN_E].obj = NULL;
         // View destroyed, reset state
     }
 }
 
 /* Create the settings view */
-static void create_settings_view(lv_obj_t * parent) {
+static void create_settings(lv_obj_t * parent) {
     /* Create the settings view object */
     lv_obj_t * settings_view = lv_obj_create(parent);
     lv_obj_set_size(settings_view, LV_PCT(100), LV_PCT(100));
@@ -225,7 +237,7 @@ static void create_settings_view(lv_obj_t * parent) {
     lv_obj_t * back_btn = lv_btn_create(settings_view);
     lv_obj_set_size(back_btn, 60, 40);
     lv_obj_align(back_btn, LV_ALIGN_TOP_LEFT, 10, 10);
-    lv_obj_add_event_cb(back_btn, return_to_main_view, LV_EVENT_CLICKED, NULL);
+    lv_obj_add_event_cb(back_btn, return_to_main, LV_EVENT_CLICKED, NULL);
     lv_obj_align(back_btn, LV_ALIGN_TOP_LEFT, 0, 0);
 
     lv_obj_t * back_label = lv_label_create(back_btn);
@@ -260,8 +272,16 @@ static void create_settings_view(lv_obj_t * parent) {
     lv_obj_center(btn);
 
     /*Tile3: a list*/
-    lv_obj_t * tile3 = lv_tileview_add_tile(tv, 1, 1, LV_DIR_LEFT);
-    lv_obj_t * list  = lv_list_create(tile3);
+    lv_obj_t * tile3 = lv_tileview_add_tile(tv, 1, 1, (lv_dir_t)(LV_DIR_LEFT| LV_DIR_RIGHT));
+    lv_obj_t * label3 = lv_label_create(tile3);
+
+    lv_label_set_text(label3, "label");
+    lv_obj_center(label3);
+
+
+    /*Tile4: a list*/
+    lv_obj_t * tile4 = lv_tileview_add_tile(tv, 2, 1, (lv_dir_t)(LV_DIR_LEFT|LV_DIR_RIGHT));
+    lv_obj_t * list  = lv_list_create(tile4);
     lv_obj_set_size(list, LV_PCT(100), LV_PCT(100));
 
     lv_list_add_button(list, NULL, "One");
@@ -275,21 +295,24 @@ static void create_settings_view(lv_obj_t * parent) {
     lv_list_add_button(list, NULL, "Nine");
     lv_list_add_button(list, NULL, "Ten");
 
+    /* Add swipe event handler */
+    lv_obj_add_event_cb(settings_view, swipe_event_handler, LV_EVENT_GESTURE, NULL);
+
     /* Set the view object */
-    ((struct {view_create_cb_t create_cb; view_destroy_cb_t destroy_cb; lv_obj_t * obj;} *)views)[VIEW_SETTINGS].obj = settings_view;
+    ((struct {view_create_cb_t create_cb; view_destroy_cb_t destroy_cb; lv_obj_t * obj;} *)views)[VIEW_SETTINGS_E].obj = settings_view;
 }
 
 /* Destroy the settings view */
-static void destroy_settings_view(void) {
-    lv_obj_t * settings_view = ((struct {view_create_cb_t create_cb; view_destroy_cb_t destroy_cb; lv_obj_t * obj;} *)views)[VIEW_SETTINGS].obj;
+static void destroy_settings(void) {
+    lv_obj_t * settings_view = ((struct {view_create_cb_t create_cb; view_destroy_cb_t destroy_cb; lv_obj_t * obj;} *)views)[VIEW_SETTINGS_E].obj;
     if(settings_view) {
         lv_obj_del(settings_view);
-        ((struct {view_create_cb_t create_cb; view_destroy_cb_t destroy_cb; lv_obj_t * obj;} *)views)[VIEW_SETTINGS].obj = NULL;
+        ((struct {view_create_cb_t create_cb; view_destroy_cb_t destroy_cb; lv_obj_t * obj;} *)views)[VIEW_SETTINGS_E].obj = NULL;
     }
 }
 
 /* Create the music view */
-static void create_music_view(lv_obj_t * parent) {
+static void create_music(lv_obj_t * parent) {
     /* Create the music view object */
     lv_obj_t * music_view = lv_obj_create(parent);
     lv_obj_set_size(music_view, LV_PCT(100), LV_PCT(100));
@@ -305,7 +328,7 @@ static void create_music_view(lv_obj_t * parent) {
     lv_obj_t * back_btn = lv_btn_create(music_view);
     lv_obj_set_size(back_btn, 60, 40);
     lv_obj_align(back_btn, LV_ALIGN_TOP_LEFT, 10, 10);
-    lv_obj_add_event_cb(back_btn, return_to_main_view, LV_EVENT_CLICKED, NULL);
+    lv_obj_add_event_cb(back_btn, return_to_main, LV_EVENT_CLICKED, NULL);
 
     lv_obj_t * back_label = lv_label_create(back_btn);
     lv_label_set_text(back_label, LV_SYMBOL_LEFT);
@@ -388,21 +411,24 @@ static void create_music_view(lv_obj_t * parent) {
     /* Set the initial tile */
     lv_tileview_set_tile(tileview, tile1, LV_ANIM_OFF);
 
+    /* Add swipe event handler */
+    lv_obj_add_event_cb(music_view, swipe_event_handler, LV_EVENT_GESTURE, NULL);
+
     /* Set the view object */
-    ((struct {view_create_cb_t create_cb; view_destroy_cb_t destroy_cb; lv_obj_t * obj;} *)views)[VIEW_MUSIC].obj = music_view;
+    ((struct {view_create_cb_t create_cb; view_destroy_cb_t destroy_cb; lv_obj_t * obj;} *)views)[VIEW_MUSIC_E].obj = music_view;
 }
 
 /* Destroy the music view */
-static void destroy_music_view(void) {
-    lv_obj_t * music_view = ((struct {view_create_cb_t create_cb; view_destroy_cb_t destroy_cb; lv_obj_t * obj;} *)views)[VIEW_MUSIC].obj;
+static void destroy_music(void) {
+    lv_obj_t * music_view = ((struct {view_create_cb_t create_cb; view_destroy_cb_t destroy_cb; lv_obj_t * obj;} *)views)[VIEW_MUSIC_E].obj;
     if(music_view) {
         lv_obj_del(music_view);
-        ((struct {view_create_cb_t create_cb; view_destroy_cb_t destroy_cb; lv_obj_t * obj;} *)views)[VIEW_MUSIC].obj = NULL;
+        ((struct {view_create_cb_t create_cb; view_destroy_cb_t destroy_cb; lv_obj_t * obj;} *)views)[VIEW_MUSIC_E].obj = NULL;
     }
 }
 
 /* Create the gallery view */
-static void create_gallery_view(lv_obj_t * parent) {
+static void create_gallery(lv_obj_t * parent) {
     /* Create the gallery view object */
     lv_obj_t * gallery_view = lv_obj_create(parent);
     lv_obj_set_size(gallery_view, LV_PCT(100), LV_PCT(100));
@@ -418,7 +444,7 @@ static void create_gallery_view(lv_obj_t * parent) {
     lv_obj_t * back_btn = lv_btn_create(gallery_view);
     lv_obj_set_size(back_btn, 60, 40);
     lv_obj_align(back_btn, LV_ALIGN_TOP_LEFT, 10, 10);
-    lv_obj_add_event_cb(back_btn, return_to_main_view, LV_EVENT_CLICKED, NULL);
+    lv_obj_add_event_cb(back_btn, return_to_main, LV_EVENT_CLICKED, NULL);
 
     lv_obj_t * back_label = lv_label_create(back_btn);
     lv_label_set_text(back_label, LV_SYMBOL_LEFT);
@@ -517,16 +543,19 @@ static void create_gallery_view(lv_obj_t * parent) {
     /* Set the initial tile */
     lv_tileview_set_tile(tileview, tile1, LV_ANIM_OFF);
 
+    /* Add swipe event handler */
+    lv_obj_add_event_cb(gallery_view, swipe_event_handler, LV_EVENT_GESTURE, NULL);
+
     /* Set the view object */
-    ((struct {view_create_cb_t create_cb; view_destroy_cb_t destroy_cb; lv_obj_t * obj;} *)views)[VIEW_GALLERY].obj = gallery_view;
+    ((struct {view_create_cb_t create_cb; view_destroy_cb_t destroy_cb; lv_obj_t * obj;} *)views)[VIEW_GALLERY_E].obj = gallery_view;
 }
 
 /* Destroy the gallery view */
-static void destroy_gallery_view(void) {
-    lv_obj_t * gallery_view = ((struct {view_create_cb_t create_cb; view_destroy_cb_t destroy_cb; lv_obj_t * obj;} *)views)[VIEW_GALLERY].obj;
+static void destroy_gallery(void) {
+    lv_obj_t * gallery_view = ((struct {view_create_cb_t create_cb; view_destroy_cb_t destroy_cb; lv_obj_t * obj;} *)views)[VIEW_GALLERY_E].obj;
     if(gallery_view) {
         lv_obj_del(gallery_view);
-        ((struct {view_create_cb_t create_cb; view_destroy_cb_t destroy_cb; lv_obj_t * obj;} *)views)[VIEW_GALLERY].obj = NULL;
+        ((struct {view_create_cb_t create_cb; view_destroy_cb_t destroy_cb; lv_obj_t * obj;} *)views)[VIEW_GALLERY_E].obj = NULL;
     }
 }           
 

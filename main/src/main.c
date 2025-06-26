@@ -24,8 +24,9 @@
 #include "lvgl/demos/lv_demos.h"
 
 #include "demo/manager_view.h"
-//#include "demo/view_manager.h"
 #include "demo/view_watefall.h"
+#include "demo/launcher_view.h"
+#include "demo/gui.c"
 
 
 /*********************
@@ -87,6 +88,7 @@ int SDL_main(int argc, char **argv)
   //hal_init(320, 480);
   hal_init(320, 320);
   //hal_init(480, 480);
+  //hal_init(350, 500);
 
   #if LV_USE_OS == LV_OS_NONE
 
@@ -100,9 +102,11 @@ int SDL_main(int argc, char **argv)
   //lv_demo_music();
   //lv_demos_show_help();
   //lv_demo_stress();
-  //lv_example_view_manager();
+  lv_example_view_manager();
   //view_manager_init();
-  lv_demo_waterfall();
+  //lv_demo_waterfall();
+  //my_gui();
+  //launcher_init();
 
   while(1) {
     /* Periodically call the lv_task handler.
