@@ -31,6 +31,13 @@ The UI screen shot is as follows:
 <a id="LVGL_Windows_Manager"></a>
 The LVGL Windows Manager is based on V9.3, and it is a demo application that showcases the capabilities of the LVGL  graphical user interface library. It is designed to provide a user-friendly interface for launching various applications and features on a graphical display, such as Android Launcher or Apple UI Home.
 Ofcause it can be used for other purposes, such as a custom desktop environment or a home automation dashboard.
+It supports the following features:
+- Multiple window management
+- Window creation and deletion
+- Window stacking
+- Window title bar
+- Window back
+- Window status bar
 
 The UI screen shot is as follows:
 ![image](https://github.com/suijunqiang/lvgl9.3_watch_ui/tree/main/main/src/demo/img/view_manager.gif)
