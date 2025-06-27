@@ -28,6 +28,7 @@
 #include "demo/launcher_view.h"
 #include "demo/gui.c"
 #include "demo/multi_lang.h"
+#include "demo/page_indicator.h"
 
 
 /*********************
@@ -108,6 +109,7 @@ int SDL_main(int argc, char **argv)
   //my_gui();
   //launcher_init();
    // create_multilingual_demo();
+   //create_tileview_with_indicator();
 
   while(1) {
     /* Periodically call the lv_task handler.
