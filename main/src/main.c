@@ -107,9 +107,9 @@ int SDL_main(int argc, char **argv)
   //lv_example_view_manager();
   //lv_demo_waterfall();
   //my_gui();
-  //launcher_init();
+  launcher_init();
   // create_multilingual_demo();
-   create_tileview_with_indicator();
+  // create_tileview_with_indicator();
 
   while(1) {
     /* Periodically call the lv_task handler.

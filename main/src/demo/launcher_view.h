@@ -173,20 +173,26 @@ void launcher_init(void) {
 
 // Create the top status bar
 static void create_top_status_bar(lv_obj_t * parent) {
-    lv_obj_t * status_bar = lv_obj_create(parent);
-    lv_obj_set_size(status_bar, LV_PCT(100), 30);
-    lv_obj_set_style_bg_color(status_bar, lv_color_hex(0xFFFFFF), 0);
+lv_obj_t * status_bar = lv_obj_create(parent);
+    lv_obj_set_size(status_bar, LV_PCT(100), 32);
+    lv_obj_set_style_bg_color(status_bar, lv_palette_lighten(LV_PALETTE_BLUE, 2), 0);
+    lv_obj_set_style_bg_grad_color(status_bar, lv_palette_main(LV_PALETTE_CYAN), 0);
+    lv_obj_set_style_bg_grad_dir(status_bar, LV_GRAD_DIR_HOR, 0);
+    lv_obj_set_style_radius(status_bar, 0, 0);
+    lv_obj_set_style_shadow_width(status_bar, 0, 0);
     lv_obj_clear_flag(status_bar, LV_OBJ_FLAG_SCROLLABLE);
 
-    // Create time label
     lv_obj_t * time_label = lv_label_create(status_bar);
     lv_label_set_text(time_label, "12:00");
-    lv_obj_align(time_label, LV_ALIGN_LEFT_MID, 10, 0);
+    lv_obj_set_style_text_color(time_label, lv_color_white(), 0);
+    lv_obj_set_style_text_font(time_label, &lv_font_montserrat_18, 0);
+    lv_obj_align(time_label, LV_ALIGN_LEFT_MID, 12, 0);
 
-    // Create wifi and battery label
     lv_obj_t * wifi_battery_label = lv_label_create(status_bar);
     lv_label_set_text(wifi_battery_label, LV_SYMBOL_WIFI " " LV_SYMBOL_BATTERY_FULL);
-    lv_obj_align(wifi_battery_label, LV_ALIGN_RIGHT_MID, -10, 0);
+    lv_obj_set_style_text_color(wifi_battery_label, lv_color_white(), 0);
+    lv_obj_set_style_text_font(wifi_battery_label, &lv_font_montserrat_18, 0);
+    lv_obj_align(wifi_battery_label, LV_ALIGN_RIGHT_MID, -12, 0);
 }
 
 // Create the middle app icons

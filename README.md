@@ -1,8 +1,16 @@
 
+lvgl 9.3 Android launcher UI
+![image](http://www.skybureau.net:10000/img/lvgl/Launcher.gif)
+lvgl 9.3 waterfall/honeycomb screen shot
+![image](http://www.skybureau.net:10000/img/lvgl/waterfall.gif)
 ![image](main/src/demo/img/waterfall.png)
+lvgl 9.3 view indicator screen shot
+![image](main/src/demo/img/view_indicator.png)
+lvgl 9.3 MVVM window manager screen shot
 ![image](main/src/demo/img/win_main.png)
 ![image](main/src/demo/img/win_settings.png)
 ![image](main/src/demo/img/win_music.png)
+lvgl 9.3 waterfall/honeycomb gif
 ![image](main/src/demo/lvgl_waterfallf.gif)
 # VSCode Simulator project for LVGL
 
