@@ -26,9 +26,12 @@
 #include "demo/manager_view.h"
 #include "demo/view_watefall.h"
 #include "demo/launcher_view.h"
+#include "demo/gallery_indicator.h"
 #include "demo/gui.c"
 #include "demo/multi_lang.h"
 #include "demo/page_indicator.h"
+#include "demo/gallery_carousel.h"
+#include "demo/ui/ui_manager.h"
 
 
 /*********************
@@ -87,9 +90,10 @@ int SDL_main(int argc, char **argv)
   lv_init();
 
   /*Initialize the HAL (display, input devices, tick) for LVGL*/
-  //hal_init(320, 480);
-  hal_init(320, 320);
+  hal_init(320, 480);
+  //hal_init(320, 320);
   //hal_init(480, 480);
+  //hal_init(480, 320);
   //hal_init(350, 500);
 
   #if LV_USE_OS == LV_OS_NONE
@@ -107,10 +111,13 @@ int SDL_main(int argc, char **argv)
   //lv_example_view_manager();
   //lv_demo_waterfall();
   //my_gui();
-  launcher_init();
+  //lv_example_img_slider();
+  //launcher_init();
   // create_multilingual_demo();
-  // create_tileview_with_indicator();
-
+   //create_tileview_with_indicator();
+  //create_lvgl_gallery();
+  //create_continuous_gallery();
+  ui_manager_init();
   while(1) {
     /* Periodically call the lv_task handler.
      * It could be done in a timer interrupt or an OS task too.*/

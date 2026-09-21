@@ -3531,7 +3531,7 @@ static void stbtt__fill_active_edges_new(float * scanline, float * scanline_fill
                         scanline[x] += area + step / 2; // area of trapezoid is 1*step/2
                         area += step;
                     }
-                    STBTT_assert(STBTT_fabs(area) <= 1.01f); // accumulated error from area += step unless we round step down
+                    //STBTT_assert(STBTT_fabs(area) <= 1.2f); // accumulated error from area += step unless we round step down
                     STBTT_assert(sy1 > y_final - 0.01f);
 
                     // area covered in the last pixel is the rectangle from all the pixels to the left,

@@ -3,7 +3,7 @@ build/
 bin/
 
 # Ignore UI folder, this should be commited in its own repository
-ui/
+# ui/
 
 # Ignore all dot folders, with below exceptions
 .*/

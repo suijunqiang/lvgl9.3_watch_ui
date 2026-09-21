@@ -73,6 +73,16 @@ if(USE_FREERTOS)
         ${PROJECT_SOURCE_DIR}/main/src/main.c
         ${PROJECT_SOURCE_DIR}/main/src/freertos_main.cpp
         ${PROJECT_SOURCE_DIR}/main/src/mouse_cursor_icon.c
+        ${PROJECT_SOURCE_DIR}/main/src/demo/ui/ui_manager.c
+        ${PROJECT_SOURCE_DIR}/main/src/demo/ui/ui_views.c
+        ${PROJECT_SOURCE_DIR}/main/src/demo/ui/ui_page_base.c
+        ${PROJECT_SOURCE_DIR}/main/src/demo/ui/ui_home_view.c
+        ${PROJECT_SOURCE_DIR}/main/src/demo/ui/ui_setting_view.c
+        ${PROJECT_SOURCE_DIR}/main/src/demo/ui/ui_music_view.c
+        ${PROJECT_SOURCE_DIR}/main/src/demo/ui/ui_wifi_view.c
+        ${PROJECT_SOURCE_DIR}/main/src/demo/ui/ui_popup_view.c
+        ${PROJECT_SOURCE_DIR}/main/src/demo/ui/ui_watch_view.c
+        ${PROJECT_SOURCE_DIR}/main/src/demo/ui/mobile/ui_android.c
         ${PROJECT_SOURCE_DIR}/main/src/FreeRTOS_Posix_Port.c
         ${FREERTOS_SOURCES}  # Add only if USE_FREERTOS is enabled
     )
@@ -82,6 +92,16 @@ else()
     add_executable(main
         ${PROJECT_SOURCE_DIR}/main/src/main.c
         ${PROJECT_SOURCE_DIR}/main/src/mouse_cursor_icon.c
+        ${PROJECT_SOURCE_DIR}/main/src/demo/ui/ui_manager.c
+        ${PROJECT_SOURCE_DIR}/main/src/demo/ui/ui_views.c
+        ${PROJECT_SOURCE_DIR}/main/src/demo/ui/ui_page_base.c
+        ${PROJECT_SOURCE_DIR}/main/src/demo/ui/ui_home_view.c
+        ${PROJECT_SOURCE_DIR}/main/src/demo/ui/ui_setting_view.c
+        ${PROJECT_SOURCE_DIR}/main/src/demo/ui/ui_music_view.c
+        ${PROJECT_SOURCE_DIR}/main/src/demo/ui/ui_wifi_view.c
+        ${PROJECT_SOURCE_DIR}/main/src/demo/ui/ui_popup_view.c
+        ${PROJECT_SOURCE_DIR}/main/src/demo/ui/ui_watch_view.c
+        ${PROJECT_SOURCE_DIR}/main/src/demo/ui/mobile/ui_android.c
     )
 endif()
 

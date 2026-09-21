@@ -104,7 +104,7 @@ static void img_event_cb(lv_event_t * e) {
     lv_event_code_t code = lv_event_get_code(e);
     
     if(code == LV_EVENT_CLICKED) {
-        printf("Í¼Ïñ±»µã»÷£¡\n");
+        printf("image clicked!\n");
         lv_obj_t * mbox1 = lv_msgbox_create(NULL);
         lv_msgbox_add_title(mbox1, "Hello");
         lv_msgbox_add_text(mbox1, "icon btn click.");

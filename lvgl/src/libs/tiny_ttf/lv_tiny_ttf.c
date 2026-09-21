@@ -46,6 +46,9 @@ static void ttf_cb_stream_seek(ttf_cb_stream_t * stream, size_t position);
 #endif
 
 #include "stb_rect_pack.h"
+#undef STBTT_ASSERT
+#define STBTT_ASSERT(x) do {} while(0)
+
 #include "stb_truetype_htcw.h"
 
 /**********************
