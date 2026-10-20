@@ -1,4 +1,4 @@
-# UI View Manager ¡ª Developer Guide
+# UI View Manager — Developer Guide
 
 A small, layered view manager for LVGL 9.x. It gives you a navigation
 stack (`push` / `pop` / `switch`) with a clean per-view lifecycle, and lets
@@ -14,19 +14,19 @@ you add a new screen in a few lines.
 The whole idea is **layering**: each file has exactly one job.
 
 ```
- ©°©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©´
- ©¦ Layer 4  examples   ui_*_view.c / mobile/ui_*.c              ©¦
- ©¦          one file per view ¡ª widgets only                    ©¦
- ©À©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©È
- ©¦ Layer 3  page base  ui_page_base.[ch]                        ©¦
- ©¦          shared container + default lifecycle                ©¦
- ©À©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©È
- ©¦ Layer 2  domain     ui_views.[ch]                            ©¦
- ©¦          view ids, ui_view_t descriptor, registry            ©¦
- ©À©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©È
- ©¦ Layer 1  framework  ui_manager.[ch]                          ©¦
- ©¦          view stack + lifecycle engine (view-agnostic)       ©¦
- ©¸©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¼
+ +--------------------------------------------------------------+
+ ¦ Layer 4  examples   ui_*_view.c / mobile/ui_*.c              ¦
+ ¦          one file per view — widgets only                    ¦
+ +--------------------------------------------------------------¦
+ ¦ Layer 3  page base  ui_page_base.[ch]                        ¦
+ ¦          shared container + default lifecycle                ¦
+ +--------------------------------------------------------------¦
+ ¦ Layer 2  domain     ui_views.[ch]                            ¦
+ ¦          view ids, ui_view_t descriptor, registry            ¦
+ +--------------------------------------------------------------¦
+ ¦ Layer 1  framework  ui_manager.[ch]                          ¦
+ ¦          view stack + lifecycle engine (view-agnostic)       ¦
+ +--------------------------------------------------------------+
 ```
 
 | File | Layer | Responsibility |
@@ -35,7 +35,8 @@ The whole idea is **layering**: each file has exactly one job.
 | `ui_manager.h` | framework | Public navigation API. |
 | `ui_views.c` | domain | The **only** place that maps `VIEW_*` ids to view functions. |
 | `ui_views.h` | domain | `view_id_t`, `ui_view_t`, `UI_VIEW_DECLARE()`. |
-| `ui_page_base.c` | page base | Root object, title, navigation buttons, default lifecycle. |
+| `ui_theme.h` | design | Palette, fonts, layout tokens and shared style helpers. |
+| `ui_page_base.c` | page base | Root object, header/back button, content area, default lifecycle. |
 | `ui_page_base.h` | page base | `ui_page_t`, `UI_VIEW_DEFINE()`. |
 | `ui_*_view.c` | examples | Widgets of one screen. |
 
@@ -105,7 +106,7 @@ Navigation rules:
 
 - `ui_push_view()` is ignored if `id` is already the active view.
 - Navigation started from inside a lifecycle callback (i.e. while a
-  transition is running) is rejected and logged ¡ª this prevents re-entrant
+  transition is running) is rejected and logged — this prevents re-entrant
   stack corruption. If you need to navigate from an event, call it from
   the LVGL event callback (outside a transition), never from `open`/`pause`.
 - The stack holds up to `UI_STACK_MAX` (16) views.
@@ -145,11 +146,10 @@ static ui_page_t s_page;
 
 static void sensors_build(ui_page_t *page)
 {
-    ui_page_create_root(page, "SENSORS", lv_color_hex(0x101820));
-    ui_page_create_title(page, "SENSORS");
-    ui_page_create_navigation(page, "Back", VIEW_HOME, true);
+    ui_page_create_root(page, "SENSORS", UI_COLOR_BG);
+    lv_obj_t *content = ui_page_create_header(page, "Sensors", true);
 
-    /* ... your widgets (children of page->root) ... */
+    /* your widgets go inside `content` ... */
 }
 
 UI_VIEW_DEFINE(view_sensors, &s_page, sensors_build)
@@ -166,7 +166,7 @@ and add `&view_sensors_desc` to `g_views[]`.
 **5. Add the file to `CMakeLists.txt`** (both the FreeRTOS and the normal
 `add_executable(main ...)` blocks).
 
-That's it ¡ª the manager picks it up automatically.
+That's it — the manager picks it up automatically.
 
 ---
 
@@ -176,7 +176,12 @@ The page is a full-screen container owned by a view.
 
 ```c
 lv_obj_t *ui_page_create_root(ui_page_t *page, const char *name, lv_color_t bg);
-lv_obj_t *ui_page_create_title(ui_page_t *page, const char *title);
+
+/* Title bar + optional back arrow; returns the content area below it. */
+lv_obj_t *ui_page_create_header(ui_page_t *page, const char *title,
+                                bool show_back);
+
+void      ui_page_create_title(ui_page_t *page, const char *title);
 void      ui_page_create_navigation(ui_page_t *page, const char *next_text,
                                     view_id_t next_id, bool show_back);
 void      ui_page_show(ui_page_t *page);
@@ -205,17 +210,61 @@ functions yourself. See `mobile/ui_watch_waterfall.c`.
 
 ---
 
-## 7. Included example views
+## 7. Theme (`ui_theme.h`)
+
+All colours, fonts and shared styling live in one header, so every view
+looks the same and a restyle is a single-file change.
+
+```c
+/* Palette */
+UI_COLOR_BG  UI_COLOR_SURFACE  UI_COLOR_TILE  UI_COLOR_TILE_PRESS
+UI_COLOR_ACCENT  UI_COLOR_ACCENT_2  UI_COLOR_TEXT  UI_COLOR_TEXT_DIM
+
+/* Fonts */
+UI_FONT_DISPLAY  UI_FONT_TITLE  UI_FONT_BODY  UI_FONT_SMALL
+UI_FONT_ICON  UI_FONT_ICON_LARGE
+
+/* Layout tokens */
+UI_PAD  UI_GAP  UI_RADIUS_CARD  UI_RADIUS_TILE  UI_TOUCH_SIZE
+
+/* Helpers */
+ui_style_surface(obj, color);        /* flat non-scrollable surface      */
+ui_style_transparent(obj);           /* invisible grouping container     */
+ui_style_flex(obj, flow, main, cross, gap);
+ui_label(parent, text, color, font);
+ui_card(parent, color);              /* rounded surface + soft shadow    */
+ui_divider(parent, width);
+```
+
+A page header is the standard way to get consistent chrome **and** a
+working back button:
+
+```c
+lv_obj_t *content = ui_page_create_header(page, "Title", true /* back */);
+/* add widgets to `content` */
+```
+
+The root view (HOME) passes `show_back = false`; every pushed view passes
+`true`, so there is always a way back to home.
+
+---
+
+## 8. Included example views
 
 | View id | File | Notes |
 |---------|------|-------|
-| `VIEW_HOME` | `ui_home_view.c` | Status bar, clock card and a quick-launch grid driven by the `s_tiles[]` table. |
-| `VIEW_SETTING` | `ui_setting_view.c` | Simple page with title + navigation. |
-| `VIEW_MUSIC` | `ui_music_view.c` | Simple page. |
-| `VIEW_WIFI` | `ui_wifi_view.c` | Simple page. |
-| `VIEW_POPUP` | `ui_popup_view.c` | Page with a centered popup and a close button. |
-| `VIEW_ANDROID_LAUNCHER` | `mobile/ui_android.c` | Self-managed widgets (own `s_root`). |
-| `VIEW_WATERFALL` | `mobile/ui_watch_waterfall.c` | Interactive zoom grid: a staggered ("honeycomb") tile layout where tiles zoom by distance from the screen centre and pan by dragging. Ported from `lv_demo_waterfall()` with all image assets removed. Each tile shows the same built-in LVGL icon glyph (`LV_SYMBOL_IMAGE`). |
+| `VIEW_HOME` | `ui_home_view.c` | Root view (no back button). Status bar, gradient clock card, flex-wrapped quick-launch grid driven by the `s_tiles[]` table. |
+| `VIEW_SETTING` | `ui_setting_view.c` | Header + card. |
+| `VIEW_MUSIC` | `ui_music_view.c` | Header + "now playing" card. |
+| `VIEW_WIFI` | `ui_wifi_view.c` | Header + connection status card. |
+| `VIEW_POPUP` | `ui_popup_view.c` | Header + modal style card with a Close button. |
+| `VIEW_ANDROID_LAUNCHER` | `mobile/ui_android.c` | Self-managed widgets: swipeable app pages, page dots, nav bar **and a back button**. |
+| `VIEW_WATERFALL` | `mobile/ui_watch_waterfall.c` | Interactive zoom grid: staggered ("honeycomb") tile layout, tiles zoom by distance from the centre and pan by dragging. Ported from `lv_demo_waterfall()` with all image assets removed. |
+
+All non-root views have a **back button** in their header, so every screen
+can return to home. Swipe / drag gestures (waterfall, launcher pages) and
+tap targets coexist; if you add a drag-heavy view, note that `LV_EVENT_PRESSING`
+is used for panning, while buttons use `LV_EVENT_CLICKED`.
 
 ### The waterfall (default demo)
 
@@ -228,9 +277,9 @@ The zoom effect is ported from `lv_demo_waterfall()` (see
 `main/src/demo/view_watefall.h`) but uses **no image resources**. The two
 parts of the algorithm:
 
-**1. Staggered grid.** Tiles sit on a brick/honeycomb pattern ¡ª every odd
+**1. Staggered grid.** Tiles sit on a brick/honeycomb pattern — every odd
 row is shifted half a cell to the right, and rows are spaced by
-`ICON_SIZE * 0.866` (sin 60¡ã):
+`ICON_SIZE * 0.866` (sin 60°):
 
 ```c
 int x = col * ICON_SIZE + ICON_SIZE / 2;
@@ -253,7 +302,7 @@ lv_obj_set_style_transform_scale(tile, scale, 0);
 ```
 
 Because `transform_scale` scales around the widget's centre, the tile
-stays centred on its layout position ¡ª no width arithmetic needed. The
+stays centred on its layout position — no width arithmetic needed. The
 nearest tiles are also raised with `lv_obj_move_foreground()` so they
 overlap their neighbours correctly.
 

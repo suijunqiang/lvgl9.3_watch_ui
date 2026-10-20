@@ -9,18 +9,22 @@
  *     like a brick wall.
  *   - Dragging pans the whole grid. Every icon is re-laid out from its
  *     precomputed home position plus the current pan offset.
- *   - Zoom: the closer an icon is to the screen centre, the larger it is.
+ *   - Zoom: the closer a tile is to the screen centre, the larger it is.
  *     Scaling uses lv_obj_set_style_transform_scale() where 256 == 100%,
- *     i.e. the icon is real-time scaled, not resized.
+ *     i.e. the tile is real-time scaled, not resized.
  *
- * Icons are plain coloured LVGL objects (no images / no flash assets), so
+ * Tiles are plain rounded LVGL objects showing the same built-in symbol, so
  * the zoom effect works with nothing but the core library.
  *
- * Layer 4 (example view): the widget lifecycle is driven by UI_VIEW_DEFINE().
+ * The header (with a working back button) is created by ui_page_base, so
+ * this view never gets stuck without a way home.
+ *
+ * Layer 4 (example view).
  */
 
 #include "../ui_views.h"
 #include "../ui_page_base.h"
+#include "../ui_theme.h"
 #include <math.h>
 
 /* Number of tiles, roughly matching the original honeycomb demo. */
@@ -28,7 +32,7 @@
 #define GRID_COLS       5
 #define ICON_SIZE       70    /* cell size in pixels */
 
-/* Zoom falloff distance: an icon farther than this from the centre keeps
+/* Zoom falloff distance: a tile farther than this from the centre keeps
  * the minimum scale. Matches IMAGE_ICON_OFFSET in the original demo. */
 #define ICON_FALLOFF    380
 
@@ -44,11 +48,14 @@
 #define ROW_STEP        0.866f
 
 static ui_page_t s_page;
+static lv_obj_t *s_canvas;             /* tile container, below header */
 static lv_obj_t *s_icons[ICON_NUM];
-static lv_point_t s_home[ICON_NUM];   /* precomputed grid position */
-static lv_point_t s_pan;              /* current drag offset        */
+static lv_point_t s_home[ICON_NUM];    /* precomputed grid position */
+static lv_point_t s_pan;               /* current drag offset        */
+static bool canvas_sized;              /* grid centred at least once */
 
 static void waterfall_layout(void);
+static void waterfall_center_grid(void);
 
 /* ------------------------------------------------------------------ */
 /* Zoom                                                                */
@@ -86,14 +93,14 @@ static int zoom_scale_for(int dist2)
 
 static void waterfall_layout(void)
 {
-    if (!s_page.initialized) {
+    if (s_canvas == NULL) {
         return;
     }
 
-    int w = lv_obj_get_width(s_page.root);
-    int h = lv_obj_get_height(s_page.root);
+    int w = lv_obj_get_width(s_canvas);
+    int h = lv_obj_get_height(s_canvas);
 
-    /* The root may not be sized yet; LV_EVENT_SIZE_CHANGED triggers a
+    /* The canvas may not be sized yet; LV_EVENT_SIZE_CHANGED triggers a
      * later update once the display driver reports real dimensions. */
     if (w == 0 || h == 0) {
         return;
@@ -112,20 +119,50 @@ static void waterfall_layout(void)
 
         /*
          * transform_scale keeps the widget's layout box unchanged and scales
-         * it around its centre, so the icon stays centred on pos_x/pos_y.
-         * The half-pixel nudge mirrors the original demo, which compensated
-         * for its top-left box placement; harmless here.
+         * it around its centre, so the tile stays centred on pos_x/pos_y.
          */
         lv_obj_set_style_transform_scale(s_icons[i], scale, 0);
         lv_obj_set_pos(s_icons[i],
                        pos_x - ICON_SIZE / 2,
                        pos_y - ICON_SIZE / 2);
 
-        /* Draw the icons nearest the centre on top. */
+        /* Draw the tiles nearest the centre on top. */
         if (scale > (SCALE_MIN + SCALE_MAX) / 2) {
             lv_obj_move_foreground(s_icons[i]);
         }
     }
+}
+
+/*
+ * Pan offset that centres the whole staggered grid inside the canvas, so the
+ * tiles start in the middle of the view instead of hugging the top-left.
+ */
+static void waterfall_center_grid(void)
+{
+    if (s_canvas == NULL) {
+        return;
+    }
+
+    int w = lv_obj_get_width(s_canvas);
+    int h = lv_obj_get_height(s_canvas);
+
+    if (w == 0 || h == 0) {
+        return;
+    }
+
+    /* Bounding box of the home positions (they are tile centres). */
+    int min_x = s_home[0].x, max_x = s_home[0].x;
+    int min_y = s_home[0].y, max_y = s_home[0].y;
+
+    for (int i = 1; i < ICON_NUM; i++) {
+        if (s_home[i].x < min_x) min_x = s_home[i].x;
+        if (s_home[i].x > max_x) max_x = s_home[i].x;
+        if (s_home[i].y < min_y) min_y = s_home[i].y;
+        if (s_home[i].y > max_y) max_y = s_home[i].y;
+    }
+
+    s_pan.x = w / 2 - (min_x + max_x) / 2;
+    s_pan.y = h / 2 - (min_y + max_y) / 2;
 }
 
 static void pan_by(lv_coord_t dx, lv_coord_t dy)
@@ -145,14 +182,16 @@ static void pan_by(lv_coord_t dx, lv_coord_t dy)
 /* Events                                                             */
 /* ------------------------------------------------------------------ */
 
-static void root_size_event_cb(lv_event_t *event)
+static void canvas_size_event_cb(lv_event_t *event)
 {
     if (lv_event_get_code(event) == LV_EVENT_SIZE_CHANGED) {
+        canvas_sized = true;
+        waterfall_center_grid();
         waterfall_layout();
     }
 }
 
-static void root_drag_event_cb(lv_event_t *event)
+static void canvas_drag_event_cb(lv_event_t *event)
 {
     if (lv_event_get_code(event) != LV_EVENT_PRESSING) {
         return;
@@ -186,13 +225,35 @@ static void icon_click_event_cb(lv_event_t *event)
 
 static void waterfall_build(ui_page_t *page)
 {
-    ui_page_create_root(page, "WATCH_WATERFALL", lv_color_hex(0x202020));
+    ui_page_create_root(page, "WATCH_WATERFALL", UI_COLOR_BG);
 
-    lv_obj_add_event_cb(page->root, root_size_event_cb, LV_EVENT_SIZE_CHANGED, NULL);
-    lv_obj_add_event_cb(page->root, root_drag_event_cb, LV_EVENT_PRESSING, NULL);
+    /*
+     * Header with a working back button. page->content is the area below the
+     * header; the canvas must live *inside* it (a sibling canvas would fight
+     * the header for the root's flex space and end up squeezed).
+     */
+    lv_obj_t *content = ui_page_create_header(page, "Watch", true);
+
+    s_canvas = lv_obj_create(content);
+    lv_obj_set_width(s_canvas, LV_PCT(100));
+    lv_obj_set_height(s_canvas, LV_PCT(100));
+    lv_obj_set_flex_grow(s_canvas, 1);
+    ui_style_surface(s_canvas, UI_COLOR_BG);
+    /* Trim the content padding so tiles can run to the edges. */
+    lv_obj_set_style_pad_all(content, 0, LV_PART_MAIN);
+    lv_obj_set_style_pad_row(content, 0, LV_PART_MAIN);
+    lv_obj_add_flag(s_canvas, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_set_scrollbar_mode(s_canvas, LV_SCROLLBAR_MODE_OFF);
+    /* Tiles are positioned with lv_obj_set_pos(), so the canvas must not
+     * lay its children out. */
+    lv_obj_set_layout(s_canvas, LV_LAYOUT_NONE);
+    lv_obj_add_event_cb(s_canvas, canvas_size_event_cb,
+                        LV_EVENT_SIZE_CHANGED, NULL);
+    lv_obj_add_event_cb(s_canvas, canvas_drag_event_cb, LV_EVENT_PRESSING, NULL);
 
     s_pan.x = 0;
     s_pan.y = 0;
+    canvas_sized = false;
 
     for (int i = 0; i < ICON_NUM; i++) {
         int col = i % GRID_COLS;
@@ -208,24 +269,30 @@ static void waterfall_build(ui_page_t *page)
         s_home[i].x = x;
         s_home[i].y = y;
 
-        lv_obj_t *icon = lv_obj_create(page->root);
-        lv_obj_set_size(icon, ICON_SIZE, ICON_SIZE);
-        lv_obj_set_style_radius(icon, ICON_SIZE / 4, 0);
-        lv_obj_set_style_border_width(icon, 0, 0);
-        lv_obj_set_style_bg_color(icon, lv_color_hex(0x4F8CFF), 0);
-        lv_obj_add_flag(icon, LV_OBJ_FLAG_IGNORE_LAYOUT);
-        lv_obj_add_flag(icon, LV_OBJ_FLAG_CLICKABLE);
-        lv_obj_add_event_cb(icon, icon_click_event_cb, LV_EVENT_CLICKED, NULL);
+        lv_obj_t *tile = lv_obj_create(s_canvas);
+        lv_obj_set_size(tile, ICON_SIZE, ICON_SIZE);
+        lv_obj_set_style_radius(tile, ICON_SIZE / 4, LV_PART_MAIN);
+        lv_obj_set_style_border_width(tile, 0, LV_PART_MAIN);
+        lv_obj_set_style_bg_color(tile, UI_COLOR_TILE, LV_PART_MAIN);
+        lv_obj_add_flag(tile, LV_OBJ_FLAG_IGNORE_LAYOUT);
+        lv_obj_add_flag(tile, LV_OBJ_FLAG_CLICKABLE);
+        /*
+         * The drag handler is attached to every tile as well as the canvas:
+         * a press landing on a clickable tile would otherwise never bubble a
+         * PRESSING event up to the canvas, so the grid would not move.
+         */
+        lv_obj_add_event_cb(tile, canvas_drag_event_cb, LV_EVENT_PRESSING, NULL);
+        lv_obj_add_event_cb(tile, icon_click_event_cb, LV_EVENT_CLICKED, NULL);
 
         /* Built-in LVGL icon glyph, identical for every tile. */
-        lv_obj_t *glyph = lv_label_create(icon);
-        lv_label_set_text(glyph, LV_SYMBOL_IMAGE);
-        lv_obj_set_style_text_color(glyph, lv_color_white(), 0);
+        lv_obj_t *glyph = ui_label(tile, LV_SYMBOL_IMAGE,
+                                   UI_COLOR_ACCENT, UI_FONT_ICON_LARGE);
         lv_obj_center(glyph);
 
-        s_icons[i] = icon;
+        s_icons[i] = tile;
     }
 
+    waterfall_center_grid();
     waterfall_layout();
 }
 

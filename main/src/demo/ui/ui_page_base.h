@@ -14,8 +14,8 @@
  *
  *   static void build(ui_page_t *page)
  *   {
- *       ui_page_create_root(page, "SETTING", lv_color_hex(0x303350));
- *       ui_page_create_title(page, "SETTING");
+ *       ui_page_create_root(page, "SETTING", UI_COLOR_BG);
+ *       ui_page_create_header(page, "Settings", true);  // true = show back
  *       ...
  *   }
  *
@@ -24,10 +24,12 @@
 
 #include "lvgl.h"
 #include "ui_manager.h"
+#include "ui_theme.h"
 #include <stdbool.h>
 
 typedef struct ui_page {
-    lv_obj_t *root;
+    lv_obj_t *root;      /* full screen container                     */
+    lv_obj_t *content;   /* area below the header, for page widgets   */
     const char *name;
     bool initialized;
 } ui_page_t;
@@ -36,6 +38,18 @@ typedef struct ui_page {
 lv_obj_t *ui_page_create_root(ui_page_t *page,
                               const char *name,
                               lv_color_t background);
+
+/*
+ * Create the standard header: title on the left, optional back arrow on
+ * the right. Page content should be added to page->content, which is
+ * created by this call and sized to the area below the header.
+ *
+ * A back button is only useful on a pushed (non root) view; on the root
+ * view pass show_back = false.
+ */
+lv_obj_t *ui_page_create_header(ui_page_t *page,
+                                const char *title,
+                                bool show_back);
 
 /* Show or hide the page root. */
 void ui_page_show(ui_page_t *page);
