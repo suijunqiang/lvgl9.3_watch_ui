@@ -31,13 +31,13 @@
 //每行几个图片
 #define IMAGE_ROW_NUM   5
 //图片尺寸
-#define IMAGE_SIZE      80
+#define IMAGE_SIZE      90
 //图片偏移（未用到）
 #define IMAGE_OFFSET_X  0
 #define IMAGE_OFFSET_Y  0
 //图片缩放比例
-#define IMAGE_SCALE     0.6f
-#define IMAGE_ICON_OFFSET 400
+#define IMAGE_SCALE     0.4f
+#define IMAGE_ICON_OFFSET 380
 
 //图片对象
 lv_obj_t * image[IMAGE_ICON_NUM];
@@ -139,9 +139,25 @@ static void img_drag_event_handler(lv_event_t * e)
                 &lenth, 0xFFFF);
         if(1)//根据距离屏幕中心距离确定缩放大小
         {
-            //lv_obj_set_style_transform_scale(image[i],(400 - lenth.i) * IMAGE_SCALE,_LV_STYLE_STATE_CMP_SAME);
-            lv_obj_set_style_transform_scale(image[i],(IMAGE_ICON_OFFSET - lenth.i) * IMAGE_SCALE, 0);
-            lv_obj_set_pos(image[i], pos_x - (IMAGE_ICON_OFFSET - lenth.i) * 0.1, pos_y - (IMAGE_ICON_OFFSET - lenth.i) * 0.1);
+        //icons: largest at screen center, smaller when farther away
+        int dist = lenth.i;
+        int max_dist = IMAGE_ICON_OFFSET * 1.0f;
+        if(max_dist < 1) max_dist = 1;
+        if(dist > max_dist) dist = max_dist;
+        // scale inversely with distance - closer to center = larger
+        int scale_val;
+        if(max_dist <= 0) scale_val = 256;
+        else {
+            float t = 1.0f - (dist / (float)max_dist);
+            if(t < 0) t = 0;
+            if(t > 1) t = 1;
+            // strongest at center, min further out
+            scale_val = 15 + t * 225;
+        }
+        if(scale_val < 10) scale_val = 10;
+        if(scale_val > 240) scale_val = 240;
+            lv_obj_set_style_transform_scale(image[i], scale_val, 0);
+            lv_obj_set_pos(image[i], pos_x - scale_val * 0.02, pos_y - scale_val * 0.02);
         }
         else //一般大
         {
@@ -183,11 +199,25 @@ void lv_demo_waterfall(void)
         else {
             x = (i % IMAGE_ROW_NUM) * IMAGE_SIZE + offset_x;
         }
-        y = (i / IMAGE_ROW_NUM) * IMAGE_SIZE * 0.886f + offset_y;
+        y = (i / IMAGE_ROW_NUM) * IMAGE_SIZE * 0.866f + offset_y;
         lv_sqrt((x - w / 2) * (x - w / 2) + (y - h / 2) * (y - h / 2), &len, 0xFFFF);
         if(1)
         {
-            lv_obj_set_style_transform_scale(image[i],(w / 2 - len.i) * IMAGE_SCALE, 0);
+            int dist = len.i;
+            int max_dist = IMAGE_ICON_OFFSET * 1.0f;
+            if(max_dist < 1) max_dist = 1;
+            if(dist > max_dist) dist = max_dist;
+            int scale_val;
+            if(max_dist <= 0) scale_val = 256;
+            else {
+                float t = 1.0f - (dist / (float)max_dist);
+                if(t < 0) t = 0;
+                if(t > 1) t = 1;
+                scale_val = 15 + t * 225;
+            }
+            if(scale_val < 10) scale_val = 10;
+            if(scale_val > 240) scale_val = 240;
+            lv_obj_set_style_transform_scale(image[i], scale_val, 0);
         }
         else
         {
