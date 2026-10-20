@@ -7,6 +7,13 @@
 #include <pthread.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdint.h>
+
+/*
+ * The POSIX simulator has no hardware clock peripheral. FreeRTOSConfig.h
+ * still requires a clock value for configCPU_CLOCK_HZ.
+ */
+uint32_t SystemCoreClock = 1000000U;
 
 /* Structure representing an event, consisting of a condition variable and a mutex */
 typedef struct Event

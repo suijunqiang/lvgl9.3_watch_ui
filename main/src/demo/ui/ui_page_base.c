@@ -68,6 +68,50 @@ void ui_page_destroy(ui_page_t *page)
     page->initialized = false;
 }
 
+/* --------------------------------------------------------------------- */
+/* Default view lifecycle bound to a page                                 */
+/* --------------------------------------------------------------------- */
+
+void ui_page_view_init(ui_page_t *page, ui_page_build_t build)
+{
+    if (page == NULL || page->initialized) {
+        return;
+    }
+
+    if (build != NULL) {
+        build(page);
+    }
+
+    /* ui_page_create_root() sets the flag; enforce it for safety. */
+    page->initialized = (page->root != NULL);
+}
+
+void ui_page_view_open(ui_page_t *page, ui_page_build_t build)
+{
+    ui_page_view_init(page, build);
+    ui_page_show(page);
+}
+
+void ui_page_view_pause(ui_page_t *page)
+{
+    ui_page_hide(page);
+}
+
+void ui_page_view_resume(ui_page_t *page)
+{
+    ui_page_show(page);
+}
+
+void ui_page_view_close(ui_page_t *page)
+{
+    ui_page_hide(page);
+}
+
+void ui_page_view_deinit(ui_page_t *page)
+{
+    ui_page_destroy(page);
+}
+
 lv_obj_t *ui_page_create_title(ui_page_t *page, const char *title)
 {
     if (page == NULL || page->root == NULL) {

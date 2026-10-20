@@ -137,12 +137,12 @@ void lvgl_task(void *pvParameters)
  * @param   pvParameters   Task parameters (not used in this example)
  * @return  None
  */
-void another_task(void *pvParameters)
+static void logging_task(void *pvParameters)
 {
-    /* Create some load in an infinite loop */
-    while (true){
-        printf("Second Task is running :)\n");
-        /* Delay the task for 500 milliseconds */
+    (void)pvParameters;
+
+    while (true) {
+        printf("[FreeRTOS] logging task is running\n");
         vTaskDelay(pdMS_TO_TICKS(500));
     }
 }
@@ -166,9 +166,9 @@ extern "C" void freertos_main()
         /* Error handling */
     }
 
-    /* Create another task */
-    if (xTaskCreate(another_task, "Another Task", 1024, nullptr, 1, nullptr) != pdPASS) {
-        printf("Error creating another task\n");
+    /* Create a minimal task that periodically writes a log message. */
+    if (xTaskCreate(logging_task, "LogTask", 1024, nullptr, 1, nullptr) != pdPASS) {
+        printf("Error creating logging task\n");
         /* Error handling */
     }
 

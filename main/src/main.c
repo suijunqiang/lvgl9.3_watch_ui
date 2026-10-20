@@ -90,8 +90,8 @@ int SDL_main(int argc, char **argv)
   lv_init();
 
   /*Initialize the HAL (display, input devices, tick) for LVGL*/
-  hal_init(320, 480);
-  //hal_init(320, 320);
+  //hal_init(320, 480);
+  hal_init(320, 320);
   //hal_init(480, 480);
   //hal_init(480, 320);
   //hal_init(350, 500);
@@ -117,7 +117,16 @@ int SDL_main(int argc, char **argv)
    //create_tileview_with_indicator();
   //create_lvgl_gallery();
   //create_continuous_gallery();
+  ui_views_register_all();   /* wire the views into the manager (ui_views.c) */
+#if 0
+  /* Option A: launch the waterfall directly as the root view. */
+  ui_manager_init_with(VIEW_WATERFALL);
+#else
+  /* Option B: normal boot to VIEW_HOME; tap the "Watch" tile to reach the
+   * waterfall, or navigate straight there from any point with:      */
   ui_manager_init();
+  // ui_push_view(VIEW_WATERFALL);
+#endif
   while(1) {
     /* Periodically call the lv_task handler.
      * It could be done in a timer interrupt or an OS task too.*/

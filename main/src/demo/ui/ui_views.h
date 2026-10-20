@@ -1,9 +1,22 @@
 #ifndef UI_VIEWS_H
 #define UI_VIEWS_H
 
+/*
+ * Layer 2 - application domain: view ids, view descriptor, view registry.
+ *
+ * The UI framework is split into four layers:
+ *
+ *   ui_manager.[ch]    framework : view stack + lifecycle engine
+ *                      (knows nothing about concrete views)
+ *   ui_views.[ch]      domain    : view ids, ui_view_t descriptor, registry
+ *   ui_page_base.[ch]  page base : shared page container + default lifecycle
+ *   ui_*_view.c        examples  : one file per view, widgets only
+ */
+
 #include "lvgl.h"
 #include <stdbool.h>
 
+/* Every view of the application. VIEW_NONE is never a valid navigation target. */
 typedef enum {
     VIEW_NONE = -1,
     VIEW_HOME = 0,
@@ -16,63 +29,51 @@ typedef enum {
     VIEW_MAX
 } view_id_t;
 
+/* A single lifecycle phase. Every phase of a view is optional (may be NULL). */
+typedef void (*ui_view_cb_t)(void);
+
+/*
+ * Immutable descriptor of a view.
+ *
+ * The manager keeps a pointer to this object and stores its own runtime
+ * state (created flag, stack position) separately, so the descriptor must
+ * stay valid - a `static const` object - for the whole lifetime of the app.
+ */
 typedef struct {
     view_id_t id;
-    bool created;
-    void (*init)(void);
-    void (*open)(void);
-    void (*pause)(void);
-    void (*resume)(void);
-    void (*close)(void);
-    void (*deinit)(void);
+    const char *name;      /* used for logging, e.g. "VIEW_HOME" */
+    ui_view_cb_t init;     /* build widgets, called once          */
+    ui_view_cb_t open;     /* view became the active view         */
+    ui_view_cb_t pause;    /* covered by a view pushed on top     */
+    ui_view_cb_t resume;   /* revealed again by a pop             */
+    ui_view_cb_t close;    /* leaving the stack for good          */
+    ui_view_cb_t deinit;   /* release widgets, called once        */
 } ui_view_t;
 
-void view_home_init(void);
-void view_home_open(void);
-void view_home_pause(void);
-void view_home_resume(void);
-void view_home_close(void);
-void view_home_deinit(void);
+/*
+ * Declare the six lifecycle functions implemented by "<prefix>_<phase>".
+ * Their definitions live in the view's own .c file.
+ */
+#define UI_VIEW_DECLARE(prefix_)   \
+    void prefix_##_init(void);     \
+    void prefix_##_open(void);     \
+    void prefix_##_pause(void);    \
+    void prefix_##_resume(void);   \
+    void prefix_##_close(void);    \
+    void prefix_##_deinit(void)
 
-void view_setting_init(void);
-void view_setting_open(void);
-void view_setting_pause(void);
-void view_setting_resume(void);
-void view_setting_close(void);
-void view_setting_deinit(void);
+UI_VIEW_DECLARE(view_home);
+UI_VIEW_DECLARE(view_setting);
+UI_VIEW_DECLARE(view_music);
+UI_VIEW_DECLARE(view_wifi);
+UI_VIEW_DECLARE(view_popup);
+UI_VIEW_DECLARE(ui_android);
+UI_VIEW_DECLARE(ui_watch_waterfall);
 
-void view_music_init(void);
-void view_music_open(void);
-void view_music_pause(void);
-void view_music_resume(void);
-void view_music_close(void);
-void view_music_deinit(void);
+/*
+ * Publish every view of the application to the manager (see ui_views.c).
+ * Must be called once, before ui_manager_init().
+ */
+void ui_views_register_all(void);
 
-void view_wifi_init(void);
-void view_wifi_open(void);
-void view_wifi_pause(void);
-void view_wifi_resume(void);
-void view_wifi_close(void);
-void view_wifi_deinit(void);
-
-void view_popup_init(void);
-void view_popup_open(void);
-void view_popup_pause(void);
-void view_popup_resume(void);
-void view_popup_close(void);
-void view_popup_deinit(void);
-
-void ui_android_init(void);
-void ui_android_open(void);
-void ui_android_pause(void);
-void ui_android_resume(void);
-void ui_android_close(void);
-void ui_android_deinit(void);
-
-void ui_watchwaterfall_init(void);
-void ui_watchwaterfall_open(void);
-void ui_watchwaterfall_pause(void);
-void ui_watchwaterfall_resume(void);
-void ui_watchwaterfall_close(void);
-void ui_watchwaterfall_deinit(void);
 #endif

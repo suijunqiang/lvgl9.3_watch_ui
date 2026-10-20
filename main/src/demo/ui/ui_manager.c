@@ -1,5 +1,12 @@
+/*
+ * Layer 1 - UI manager framework.
+ *
+ * A pure navigation engine: it owns the view stack, the re-entrancy guard
+ * and the per view creation state. Everything view specific arrives through
+ * ui_view_t descriptors published by ui_manager_register().
+ */
+
 #include "ui_manager.h"
-#include "ui_views.h"
 #include <stdio.h>
 
 #define UI_STACK_MAX 16
@@ -7,222 +14,242 @@
 #define UI_LOG(fmt, ...) \
     printf("[UI] " fmt "\r\n", ##__VA_ARGS__)
 
-static ui_view_t g_views[VIEW_MAX] = {
-    [VIEW_HOME] = {
-        .id = VIEW_HOME,
-        .init = view_home_init,
-        .open = view_home_open,
-        .pause = view_home_pause,
-        .resume = view_home_resume,
-        .close = view_home_close,
-        .deinit = view_home_deinit,
-    },
-    [VIEW_SETTING] = {
-        .id = VIEW_SETTING,
-        .init = view_setting_init,
-        .open = view_setting_open,
-        .pause = view_setting_pause,
-        .resume = view_setting_resume,
-        .close = view_setting_close,
-        .deinit = view_setting_deinit,
-    },
-    [VIEW_MUSIC] = {
-        .id = VIEW_MUSIC,
-        .init = view_music_init,
-        .open = view_music_open,
-        .pause = view_music_pause,
-        .resume = view_music_resume,
-        .close = view_music_close,
-        .deinit = view_music_deinit,
-    },
-    [VIEW_WIFI] = {
-        .id = VIEW_WIFI,
-        .init = view_wifi_init,
-        .open = view_wifi_open,
-        .pause = view_wifi_pause,
-        .resume = view_wifi_resume,
-        .close = view_wifi_close,
-        .deinit = view_wifi_deinit,
-    },
-    [VIEW_POPUP] = {
-        .id = VIEW_POPUP,
-        .init = view_popup_init,
-        .open = view_popup_open,
-        .pause = view_popup_pause,
-        .resume = view_popup_resume,
-        .close = view_popup_close,
-        .deinit = view_popup_deinit,
-    },
-    [VIEW_ANDROID_LAUNCHER] = {
-        .id = VIEW_ANDROID_LAUNCHER,
-        .init = ui_android_init,
-        .open = ui_android_open,
-        .pause = ui_android_pause,
-        .resume = ui_android_resume,
-        .close = ui_android_close,
-        .deinit = ui_android_deinit,
-    },
-    [VIEW_WATERFALL] = {
-        .id = VIEW_WATERFALL,
-        .init = ui_watchwaterfall_init,
-        .open = ui_watchwaterfall_open,
-        .pause = ui_watchwaterfall_pause,
-        .resume = ui_watchwaterfall_resume,
-        .close = ui_watchwaterfall_close,
-        .deinit = ui_watchwaterfall_deinit,
-    },
-};
+/* Runtime state of one view. The descriptor itself stays immutable. */
+typedef struct {
+    const ui_view_t *view;  /* NULL until the view is registered */
+    bool created;           /* init() ran, deinit() did not yet   */
+} ui_view_state_t;
 
-static view_id_t g_view_stack[UI_STACK_MAX];
-static int g_stack_top = -1;
-static bool g_manager_initialized = false;
-static bool g_transitioning = false;
+static ui_view_state_t g_state[VIEW_MAX];
+static view_id_t g_stack[UI_STACK_MAX];
+static int g_top = -1;                 /* index of the active view, -1 = empty */
+static bool g_initialized = false;
+static bool g_transitioning = false;   /* re-entrancy guard */
 
-static bool view_id_valid(view_id_t id)
+/* ------------------------------------------------------------------ */
+/* Small helpers                                                       */
+/* ------------------------------------------------------------------ */
+
+static bool id_valid(view_id_t id)
 {
     return id >= VIEW_HOME && id < VIEW_MAX;
 }
 
+static const ui_view_t *view_of(view_id_t id)
+{
+    return id_valid(id) ? g_state[id].view : NULL;
+}
+
+static const char *name_of(view_id_t id)
+{
+    const ui_view_t *view = view_of(id);
+
+    return (view != NULL && view->name != NULL) ? view->name : "?";
+}
+
+/* Run a single lifecycle phase when the view implements it. */
+static void lifecycle(const ui_view_t *view, ui_view_cb_t phase, const char *what)
+{
+    if (view == NULL || phase == NULL) {
+        return;
+    }
+
+    UI_LOG("%s: %s", name_of(view->id), what);
+    phase();
+}
+
+/* Reject nested transitions (a callback started another navigation). */
+static bool transition_allowed(const char *op)
+{
+    if (!g_transitioning) {
+        return true;
+    }
+
+    UI_LOG("%s rejected: transition in progress", op);
+    return false;
+}
+
+/* Validate an id for push/switch: in range and registered. */
+static bool target_valid(const char *op, view_id_t id)
+{
+    if (!id_valid(id)) {
+        UI_LOG("%s rejected: invalid id=%d", op, (int)id);
+        return false;
+    }
+
+    if (g_state[id].view == NULL) {
+        UI_LOG("%s rejected: view %d not registered", op, (int)id);
+        return false;
+    }
+
+    return true;
+}
+
+/* ------------------------------------------------------------------ */
+/* View stack                                                          */
+/* ------------------------------------------------------------------ */
+
 static view_id_t stack_top(void)
 {
-    if (g_stack_top < 0) {
+    if (g_top < 0) {
         return VIEW_NONE;
     }
 
-    return g_view_stack[g_stack_top];
+    return g_stack[g_top];
 }
 
 static bool stack_push(view_id_t id)
 {
-    if (g_stack_top >= UI_STACK_MAX - 1) {
-        UI_LOG("stack overflow, id=%d", id);
+    if (g_top >= UI_STACK_MAX - 1) {
+        UI_LOG("stack overflow, id=%d", (int)id);
         return false;
     }
 
-    g_view_stack[++g_stack_top] = id;
+    g_stack[++g_top] = id;
     return true;
 }
 
 static view_id_t stack_pop(void)
 {
-    if (g_stack_top < 0) {
+    if (g_top < 0) {
         return VIEW_NONE;
     }
 
-    return g_view_stack[g_stack_top--];
+    return g_stack[g_top--];
+}
+
+/* ------------------------------------------------------------------ */
+/* View creation state                                                 */
+/* ------------------------------------------------------------------ */
+
+static bool ensure_created(const ui_view_t *view)
+{
+    if (view == NULL) {
+        return false;
+    }
+
+    if (!g_state[view->id].created) {
+        lifecycle(view, view->init, "init");
+        g_state[view->id].created = true;
+    }
+
+    return true;
 }
 
 static void destroy_view(view_id_t id)
 {
-    if (!view_id_valid(id)) {
+    ui_view_state_t *state = id_valid(id) ? &g_state[id] : NULL;
+
+    /* A view that was never created has nothing to close or free. */
+    if (state == NULL || !state->created) {
         return;
     }
 
-    ui_view_t *view = &g_views[id];
+    lifecycle(state->view, state->view->close, "close");
+    lifecycle(state->view, state->view->deinit, "deinit");
+    state->created = false;
+}
 
-    if (view->close != NULL) {
-        view->close();
+/* Drop the whole stack: used by ui_switch_view() and ui_manager_deinit(). */
+static void stack_clear(void)
+{
+    view_id_t id;
+
+    while ((id = stack_pop()) != VIEW_NONE) {
+        destroy_view(id);
+    }
+}
+
+/* ------------------------------------------------------------------ */
+/* Public API                                                          */
+/* ------------------------------------------------------------------ */
+
+bool ui_manager_register(const ui_view_t *view)
+{
+    if (view == NULL || !id_valid(view->id)) {
+        UI_LOG("register rejected: invalid view");
+        return false;
     }
 
-    if (view->deinit != NULL) {
-        view->deinit();
+    if (g_state[view->id].view != NULL) {
+        UI_LOG("register rejected: %s already registered",
+               name_of(view->id));
+        return false;
     }
 
-    view->created = false;
+    g_state[view->id].view = view;
+    UI_LOG("registered %s", name_of(view->id));
+    return true;
 }
 
 void ui_push_view(view_id_t id)
 {
-    if (!view_id_valid(id)) {
-        UI_LOG("invalid push id=%d", id);
+    if (!target_valid("push", id)) {
         return;
     }
 
-    if (g_transitioning) {
-        UI_LOG("push rejected during transition, id=%d", id);
+    if (!transition_allowed("push")) {
         return;
     }
 
     if (stack_top() == id) {
-        UI_LOG("view %d already active", id);
+        UI_LOG("push rejected: %s already active", name_of(id));
         return;
     }
 
-    if (g_stack_top >= UI_STACK_MAX - 1) {
+    if (g_top >= UI_STACK_MAX - 1) {
         UI_LOG("push rejected: stack full");
         return;
     }
 
     g_transitioning = true;
 
-    view_id_t old_id = stack_top();
-    ui_view_t *old_view = view_id_valid(old_id) ? &g_views[old_id] : NULL;
-    ui_view_t *new_view = &g_views[id];
+    const ui_view_t *current = view_of(stack_top());
+    const ui_view_t *next = view_of(id);
 
-    if (old_view != NULL && old_view->pause != NULL) {
-        UI_LOG("View %d: pause", old_id);
-        old_view->pause();
+    if (current != NULL) {
+        lifecycle(current, current->pause, "pause");
     }
 
-    if (!new_view->created) {
-        if (new_view->init != NULL) {
-            UI_LOG("View %d: init", id);
-            new_view->init();
-        }
+    ensure_created(next);
 
-        new_view->created = true;
-    }
+    /* Push before open() so lifecycle callbacks observe the active view. */
+    stack_push(id);
 
-    /*
-     * Push the view before calling open().
-     * This ensures lifecycle callbacks observe the correct active view.
-     */
-    if (!stack_push(id)) {
-        g_transitioning = false;
-        return;
-    }
+    lifecycle(next, next->open, "open");
 
-    if (new_view->open != NULL) {
-        UI_LOG("View %d: open", id);
-        new_view->open();
-    }
-
-    UI_LOG("active view=%d, depth=%d", id, g_stack_top + 1);
+    UI_LOG("active=%s depth=%d", name_of(id), g_top + 1);
     g_transitioning = false;
 }
 
 void ui_pop_view(void)
 {
     /*
-     * The root view cannot be popped.
-     * This guarantees that the stack always retains at least one root view.
+     * The root view cannot be popped: the stack always keeps at least
+     * one view, so ui_current_view() never returns VIEW_NONE.
      */
-    if (g_stack_top <= 0) {
-        UI_LOG("root view cannot be popped");
+    if (g_top <= 0) {
+        UI_LOG("pop rejected: root view cannot be popped");
         return;
     }
 
-    if (g_transitioning) {
-        UI_LOG("pop rejected during transition");
+    if (!transition_allowed("pop")) {
         return;
     }
 
     g_transitioning = true;
 
-    view_id_t old_id = stack_pop();
-    view_id_t back_id = stack_top();
+    view_id_t leaving = stack_pop();
 
-    UI_LOG("--- POP: remove %d, back to %d ---", old_id, back_id);
+    UI_LOG("--- POP: remove %s, back to %s ---",
+           name_of(leaving), name_of(stack_top()));
 
-    destroy_view(old_id);
+    destroy_view(leaving);
 
-    if (view_id_valid(back_id)) {
-        ui_view_t *back_view = &g_views[back_id];
+    const ui_view_t *back = view_of(stack_top());
 
-        if (back_view->resume != NULL) {
-            UI_LOG("View %d: resume", back_id);
-            back_view->resume();
-        }
+    if (back != NULL) {
+        lifecycle(back, back->resume, "resume");
     }
 
     g_transitioning = false;
@@ -230,69 +257,66 @@ void ui_pop_view(void)
 
 void ui_switch_view(view_id_t id)
 {
-    if (!view_id_valid(id)) {
-        UI_LOG("invalid switch id=%d", id);
+    if (!target_valid("switch", id)) {
         return;
     }
 
-    if (g_transitioning) {
-        UI_LOG("switch rejected during transition");
+    if (!transition_allowed("switch")) {
         return;
     }
 
     g_transitioning = true;
-
-    /*
-     * Clear all views directly instead of calling ui_pop_view(),
-     * because ui_pop_view() must protect the root view.
-     */
-    while (g_stack_top >= 0) {
-        view_id_t old_id = stack_pop();
-        destroy_view(old_id);
-    }
-
+    /* Clear directly: ui_pop_view() would protect the root view. */
+    stack_clear();
     g_transitioning = false;
+
     ui_push_view(id);
 }
 
-void ui_manager_init(void)
+bool ui_manager_init(void)
 {
-    if (g_manager_initialized) {
+    if (g_initialized) {
         UI_LOG("UI Manager already initialized");
-        return;
+        return true;
     }
 
-    UI_LOG("UI Manager init");
+    return ui_manager_init_with(VIEW_HOME);
+}
 
-    g_stack_top = -1;
-    ui_push_view(VIEW_HOME);
-
-    g_manager_initialized = (g_stack_top >= 0);
-
-    if (!g_manager_initialized) {
-        UI_LOG("UI Manager initialization failed");
+bool ui_manager_init_with(view_id_t root_id)
+{
+    if (g_initialized) {
+        UI_LOG("UI Manager already initialized");
+        return true;
     }
+
+    UI_LOG("UI Manager init (root=%s)", name_of(root_id));
+    g_top = -1;
+
+    ui_push_view(root_id);
+
+    g_initialized = (g_top >= 0);
+
+    if (!g_initialized) {
+        UI_LOG("UI Manager init failed: call ui_views_register_all() first");
+    }
+
+    return g_initialized;
 }
 
 void ui_manager_deinit(void)
 {
-    if (!g_manager_initialized) {
+    if (!g_initialized) {
         return;
     }
 
-    if (g_transitioning) {
-        UI_LOG("deinit rejected during transition");
+    if (!transition_allowed("deinit")) {
         return;
     }
 
     g_transitioning = true;
-
-    while (g_stack_top >= 0) {
-        view_id_t old_id = stack_pop();
-        destroy_view(old_id);
-    }
-
-    g_manager_initialized = false;
+    stack_clear();
+    g_initialized = false;
     g_transitioning = false;
 
     UI_LOG("UI Manager deinitialized");
